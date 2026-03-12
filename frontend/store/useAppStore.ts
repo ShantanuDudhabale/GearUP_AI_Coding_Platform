@@ -64,7 +64,7 @@ interface AppState {
     addMessageToSession: (sessionId: string, message: ChatMessage) => void;
     deleteSession: (id: string) => void;
     unlockBadge: (id: string) => void;
-    addXP: (amount: number) => void;
+    fetchSessions: () => Promise<void>;
 }
 
 const idbStorage = {
@@ -73,9 +73,11 @@ const idbStorage = {
     removeItem: async (name: string) => del(name),
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 export const useAppStore = create<AppState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             user: null,
             token: null,
             isOffline: false,
@@ -89,20 +91,81 @@ export const useAppStore = create<AppState>()(
             stats: {
                 completedLessons: 0,
                 savedCodes: 0,
-                weakTopics: ['Loops', 'Functions', 'Arrays'],
-                streak: 3,
-                xp: 120,
+                weakTopics: [],
+                streak: 0,
+                xp: 0,
                 badges: [],
             },
 
-            setUser: (user, token) => set({ user, token }),
-            logout: () => set({ user: null, token: null }),
+            setUser: (user, token) => {
+                const oldToken = get().token;
+                set({ user, token });
+                if (user && token && oldToken !== token) {
+                    get().fetchStats();
+                    get().fetchSessions();
+                }
+            },
+            logout: () => set({ user: null, token: null, sessions: [], stats: {
+                completedLessons: 0,
+                savedCodes: 0,
+                weakTopics: [],
+                streak: 0,
+                xp: 0,
+                badges: [],
+            } }),
             setOffline: (v) => set({ isOffline: v }),
             setListening: (v) => set({ isListening: v }),
             setProcessing: (v) => set({ isProcessing: v }),
             setShowConfetti: (v) => set({ showConfetti: v }),
             setShowLoginModal: (v) => set({ showLoginModal: v }),
             setTranscript: (v) => set({ transcript: v }),
+
+            fetchStats: async () => {
+                const { token } = get();
+                if (!token) return;
+
+                try {
+                    const res = await fetch(`${API_URL}/progress`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const p = data.progress;
+                        if (p) {
+                            set({
+                                stats: {
+                                    completedLessons: p.solvedQuestions || 0,
+                                    savedCodes: p.totalInteractions || 0,
+                                    weakTopics: p.mostlyIteractedTopic ? [p.mostlyIteractedTopic] : [],
+                                    streak: p.strikeCount || 0,
+                                    xp: p.xp_points || 0,
+                                    badges: p.achievements || [],
+                                }
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch stats:', err);
+                }
+            },
+
+            fetchSessions: async () => {
+                const { token } = get();
+                if (!token) return;
+                try {
+                    const res = await fetch(`${API_URL}/sessions`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.sessions) {
+                            set({ sessions: data.sessions });
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch sessions:', err);
+                }
+            },
 
             createNewSession: () => {
                 const newId = Date.now().toString();
@@ -116,18 +179,40 @@ export const useAppStore = create<AppState>()(
                     sessions: [newSession, ...state.sessions].slice(0, 50),
                     currentSessionId: newId,
                 }));
+
+                const { token } = get();
+                if (token) {
+                    fetch(`${API_URL}/sessions`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` 
+                        },
+                        body: JSON.stringify({ sessionId: newId, title: 'New Chat', messages: [] })
+                    }).catch(console.error);
+                }
+
                 return newId;
             },
 
             loadSession: (id) => set({ currentSessionId: id }),
 
-            deleteSession: (id) =>
+            deleteSession: (id) => {
                 set((state) => ({
                     sessions: state.sessions.filter(s => s.id !== id),
                     currentSessionId: state.currentSessionId === id ? null : state.currentSessionId,
-                })),
+                }));
 
-            addMessageToSession: (sessionId, message) =>
+                const { token } = get();
+                if (token) {
+                    fetch(`${API_URL}/sessions/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).catch(console.error);
+                }
+            },
+
+            addMessageToSession: (sessionId, message) => {
                 set((state) => {
                     const sessionIndex = state.sessions.findIndex((s) => s.id === sessionId);
                     if (sessionIndex === -1) return state;
@@ -135,7 +220,6 @@ export const useAppStore = create<AppState>()(
                     const activeSession = state.sessions[sessionIndex];
                     let title = activeSession.title;
 
-                    // Auto-title on first user message
                     if (message.role === 'user' && activeSession.messages.length === 0) {
                         title = message.content.substring(0, 30) + (message.content.length > 30 ? '...' : '');
                     }
@@ -149,11 +233,8 @@ export const useAppStore = create<AppState>()(
 
                     const newSessions = [...state.sessions];
                     newSessions[sessionIndex] = updatedSession;
-
-                    // Move updated session to top
                     newSessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-                    // Check if AI responded (completed a lesson turn)
                     const statsUpdate = message.role === 'assistant' ? {
                         completedLessons: state.stats.completedLessons + 1,
                         savedCodes: state.stats.savedCodes + 1,
@@ -167,7 +248,25 @@ export const useAppStore = create<AppState>()(
                             ...statsUpdate,
                         },
                     };
-                }),
+                });
+
+                const { token, sessions } = get();
+                const updatedSession = sessions.find(s => s.id === sessionId);
+                if (token && updatedSession) {
+                    fetch(`${API_URL}/sessions`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` 
+                        },
+                        body: JSON.stringify({ 
+                            sessionId, 
+                            title: updatedSession.title, 
+                            messages: updatedSession.messages 
+                        })
+                    }).catch(console.error);
+                }
+            },
 
             unlockBadge: (id) =>
                 set((state) => {
@@ -181,7 +280,7 @@ export const useAppStore = create<AppState>()(
                     };
                 }),
 
-            addXP: (amount) =>
+            addXP: (amount: number) =>
                 set((state) => ({
                     stats: { ...state.stats, xp: state.stats.xp + amount },
                 })),
