@@ -7,7 +7,6 @@ import LandingHero from '@/components/LandingHero';
 import LandingFeatures from '@/components/LandingFeatures';
 import LandingStats from '@/components/LandingStats';
 import LandingTestimonials from '@/components/LandingTestimonials';
-import CursorGlow from '@/components/CursorGlow';
 import { useRouter } from 'next/navigation';
 
 export default function LandingPage() {
@@ -33,7 +32,6 @@ export default function LandingPage() {
 
   return (
     <main className="relative overflow-x-hidden bg-white dark:bg-gray-950 text-gray-900 dark:text-white">
-      <CursorGlow />
 
       {/* Login Modal — triggered from hero CTA or from Header's Get Started */}
       <LoginModal

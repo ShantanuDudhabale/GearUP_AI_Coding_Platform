@@ -35,7 +35,7 @@ export const createInteraction = async (req, res) => {
       sessionId
     } = req.body;
 
-    // create interaction document
+    // Create interaction document
     const interaction = await Interaction.create({
       userId,
       type,
@@ -52,17 +52,17 @@ export const createInteraction = async (req, res) => {
       feedback: feedback || ''
     });
 
-    // update progress stats for this user
+    // Update progress stats for this user
     const progress = await Progress.findOne({ userId });
 
     if (progress) {
-      progress.totalInteractions = (progress.totalInteractions || 0) + 1;
+      const updates = {
+        totalInteractions: (progress.totalInteractions || 0) + 1,
+        lastInteraction: new Date()
+      };
 
-      if (type === 'like') {
-        progress.likes = (progress.likes || 0) + 1;
-      } else if (type === 'dislike') {
-        progress.dislikes = (progress.dislikes || 0) + 1;
-      }
+      if (type === 'like') updates.likes = (progress.likes || 0) + 1;
+      else if (type === 'dislike') updates.dislikes = (progress.dislikes || 0) + 1;
 
       if (detectedLanguage) {
         const current = progress.languageStats.get(detectedLanguage) || 0;
@@ -79,66 +79,39 @@ export const createInteraction = async (req, res) => {
         progress.topicStats.set(topic, current + 1);
       }
 
-      // overwrite-or-set extra progress fields when provided
-      if (typeof completionPercentage === 'number') {
-        progress.completionPercentage = completionPercentage;
-      }
-      if (typeof xp_points === 'number') {
-        progress.xp_points = xp_points;
-      }
-      if (typeof level === 'number') {
-        progress.level = level;
-      }
-      if (typeof solvedQuestions === 'number') {
-        progress.solvedQuestions = solvedQuestions;
-      }
-      if (typeof strikeCount === 'number') {
-        progress.strikeCount = strikeCount;
-      }
-      if (typeof HighestStreak === 'number') {
-        progress.HighestStreak = HighestStreak;
-      }
-      if (typeof ExamplesSolved === 'number') {
-        progress.ExamplesSolved = ExamplesSolved;
-      }
-      if (Array.isArray(achievements)) {
-        progress.achievements = achievements;
-      }
-      if (Array.isArray(favoriteLanguages)) {
-        progress.favoriteLanguages = favoriteLanguages;
-      }
-      if (sessionId) {
-        progress.sessions = [...progress.sessions, sessionId];
-      }
+      // Sync specific fields if provided
+      const syncFields = {
+        completionPercentage, xp_points, level, solvedQuestions,
+        strikeCount, HighestStreak, ExamplesSolved, achievements,
+        favoriteLanguages
+      };
+      
+      Object.entries(syncFields).forEach(([key, val]) => {
+        if (val !== undefined) progress[key] = val;
+      });
 
-      progress.lastInteraction = new Date();
+      if (sessionId) progress.sessions.push(sessionId);
 
-      // recompute "mostly interacted" helpers from current maps
+      // Recompute "mostly interacted" helpers
       const entriesToMax = (entries) => {
-        let bestKey = null;
-        let bestVal = -Infinity;
+        let bestKey = null, bestVal = -Infinity;
         for (const [key, value] of entries) {
-          if (value > bestVal) {
-            bestVal = value;
-            bestKey = key;
-          }
+          if (value > bestVal) { bestVal = value; bestKey = key; }
         }
         return bestKey;
       };
 
-      const languageEntries = Array.from(progress.languageStats.entries());
-      const difficultyEntries = Array.from(progress.difficultyStats.entries());
-      const topicEntries = Array.from(progress.topicStats.entries());
-
-      progress.mostlyIteractedLanguage =
-        languageEntries.length ? entriesToMax(languageEntries) : null;
-      progress.mostlyIteractedDifficulty =
-        difficultyEntries.length ? entriesToMax(difficultyEntries) : null;
-      progress.mostlyIteractedTopic =
-        topicEntries.length ? entriesToMax(topicEntries) : null;
+      progress.mostlyIteractedLanguage = entriesToMax(Array.from(progress.languageStats.entries()));
+      progress.mostlyIteractedDifficulty = entriesToMax(Array.from(progress.difficultyStats.entries()));
+      progress.mostlyIteractedTopic = entriesToMax(Array.from(progress.topicStats.entries()));
 
       await progress.save();
     }
+
+    return res.status(201).json({
+      message: 'Interaction stored successfully',
+      interaction
+    });
 
     return res.status(201).json({
       message: 'Interaction stored successfully',

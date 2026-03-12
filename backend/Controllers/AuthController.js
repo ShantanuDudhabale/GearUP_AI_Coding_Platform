@@ -67,10 +67,11 @@ export const register = async (req, res) => {
 
     await newUser.save();
 
-    // create an empty progress document for this user
+    // create related documents
     await Progress.create({ userId: newUser._id });
+    await CodingExperience.create({ userId: newUser._id });
 
-    // optionally add a coding experience record if any info provided
+    // update coding experience if initial fields were provided
     if (
       yearsExperience ||
       (primaryLanguages && primaryLanguages.length) ||
@@ -79,15 +80,18 @@ export const register = async (req, res) => {
       portfolioUrl ||
       description
     ) {
-      await CodingExperience.create({
-        userId: newUser._id,
-        yearsExperience: yearsExperience || 0,
-        primaryLanguages: primaryLanguages || [],
-        secondaryLanguages: secondaryLanguages || [],
-        githubUrl: githubUrl || null,
-        portfolioUrl: portfolioUrl || null,
-        description: description || ''
-      });
+      await CodingExperience.findOneAndUpdate(
+        { userId: newUser._id },
+        {
+          yearsExperience: yearsExperience || 0,
+          primaryLanguages: primaryLanguages || [],
+          secondaryLanguages: secondaryLanguages || [],
+          githubUrl: githubUrl || null,
+          portfolioUrl: portfolioUrl || null,
+          description: description || ''
+        },
+        { upsert: true }
+      );
     }
 
     res.status(201).json({

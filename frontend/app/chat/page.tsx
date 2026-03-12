@@ -7,7 +7,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { generateLesson } from '@/lib/mockAI';
 import VoiceHero from '@/components/VoiceHero';
 import AIResponseCard from '@/components/AIResponseCard';
-import CursorGlow from '@/components/CursorGlow';
 import { ChatMessage } from '@/store/useAppStore';
 import {
     MessageSquare, Plus, Trash2, Clock, MessageCircle, X,
@@ -107,7 +106,6 @@ export default function ChatPage() {
 
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-            <CursorGlow />
 
             {showConfetti && (
                 <Confetti recycle={false} numberOfPieces={240}

@@ -7,12 +7,13 @@ import { Trophy, Zap, Flame, Target, ArrowLeft, LayoutDashboard, Code, BookOpen 
 import Link from 'next/link';
 
 export default function DashboardPage() {
-    const { stats } = useAppStore();
+    const { stats, fetchStats } = useAppStore();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
-    }, []);
+        fetchStats();
+    }, [fetchStats]);
 
     if (!mounted || !stats) return <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a]" />;
 
