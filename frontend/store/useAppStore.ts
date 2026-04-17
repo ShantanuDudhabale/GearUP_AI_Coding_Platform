@@ -13,8 +13,8 @@ export interface ResponseStep {
 export interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
-    content: string; // User query OR stringified JSON steps for AI
-    steps?: ResponseStep[]; // Parsed steps from AI
+    content: string;
+    steps?: ResponseStep[];
     language?: string;
     timestamp: string;
 }
@@ -26,6 +26,16 @@ export interface ChatSession {
     updatedAt: string;
 }
 
+export interface RecentInteraction {
+    _id: string;
+    questionText: string;
+    detectedLanguage: string;
+    dificultyLevel: string;
+    topic: string | null;
+    type: 'like' | 'dislike';
+    createdAt: string;
+}
+
 export interface DashboardStats {
     completedLessons: number;
     savedCodes: number;
@@ -33,6 +43,14 @@ export interface DashboardStats {
     streak: number;
     xp: number;
     badges: string[];
+    level: number;
+    highestStreak: number;
+    languageStats: Record<string, number>;
+    topicStats: Record<string, number>;
+    difficultyStats: Record<string, number>;
+    mostUsedLanguage: string | null;
+    mostUsedTopic: string | null;
+    lastInteraction: string | null;
 }
 
 interface AppState {
@@ -50,6 +68,7 @@ interface AppState {
     sessions: ChatSession[];
     transcript: string;
     stats: DashboardStats;
+    recentInteractions: RecentInteraction[];
     // Actions
     setUser: (user: any | null, token: string | null) => void;
     logout: () => void;
@@ -64,7 +83,9 @@ interface AppState {
     addMessageToSession: (sessionId: string, message: ChatMessage) => void;
     deleteSession: (id: string) => void;
     unlockBadge: (id: string) => void;
+    fetchStats: () => Promise<void>;
     fetchSessions: () => Promise<void>;
+    fetchRecentInteractions: () => Promise<void>;
 }
 
 const idbStorage = {
@@ -74,6 +95,23 @@ const idbStorage = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+const defaultStats: DashboardStats = {
+    completedLessons: 0,
+    savedCodes: 0,
+    weakTopics: [],
+    streak: 0,
+    xp: 0,
+    badges: [],
+    level: 1,
+    highestStreak: 0,
+    languageStats: {},
+    topicStats: {},
+    difficultyStats: {},
+    mostUsedLanguage: null,
+    mostUsedTopic: null,
+    lastInteraction: null,
+};
 
 export const useAppStore = create<AppState>()(
     persist(
@@ -88,14 +126,8 @@ export const useAppStore = create<AppState>()(
             currentSessionId: null,
             sessions: [],
             transcript: '',
-            stats: {
-                completedLessons: 0,
-                savedCodes: 0,
-                weakTopics: [],
-                streak: 0,
-                xp: 0,
-                badges: [],
-            },
+            stats: defaultStats,
+            recentInteractions: [],
 
             setUser: (user, token) => {
                 const oldToken = get().token;
@@ -103,16 +135,18 @@ export const useAppStore = create<AppState>()(
                 if (user && token && oldToken !== token) {
                     get().fetchStats();
                     get().fetchSessions();
+                    get().fetchRecentInteractions();
                 }
             },
-            logout: () => set({ user: null, token: null, sessions: [], stats: {
-                completedLessons: 0,
-                savedCodes: 0,
-                weakTopics: [],
-                streak: 0,
-                xp: 0,
-                badges: [],
-            } }),
+
+            logout: () => set({
+                user: null,
+                token: null,
+                sessions: [],
+                recentInteractions: [],
+                stats: defaultStats,
+            }),
+
             setOffline: (v) => set({ isOffline: v }),
             setListening: (v) => set({ isListening: v }),
             setProcessing: (v) => set({ isProcessing: v }),
@@ -123,7 +157,6 @@ export const useAppStore = create<AppState>()(
             fetchStats: async () => {
                 const { token } = get();
                 if (!token) return;
-
                 try {
                     const res = await fetch(`${API_URL}/progress`, {
                         headers: { 'Authorization': `Bearer ${token}` }
@@ -132,6 +165,14 @@ export const useAppStore = create<AppState>()(
                         const data = await res.json();
                         const p = data.progress;
                         if (p) {
+                            // Convert MongoDB Maps to plain objects
+                            const toObj = (val: any): Record<string, number> => {
+                                if (!val) return {};
+                                if (val instanceof Map) return Object.fromEntries(val);
+                                if (typeof val === 'object') return val;
+                                return {};
+                            };
+
                             set({
                                 stats: {
                                     completedLessons: p.solvedQuestions || 0,
@@ -140,12 +181,36 @@ export const useAppStore = create<AppState>()(
                                     streak: p.strikeCount || 0,
                                     xp: p.xp_points || 0,
                                     badges: p.achievements || [],
+                                    level: p.level || 1,
+                                    highestStreak: p.HighestStreak || 0,
+                                    languageStats: toObj(p.languageStats),
+                                    topicStats: toObj(p.topicStats),
+                                    difficultyStats: toObj(p.difficultyStats),
+                                    mostUsedLanguage: p.mostlyIteractedLanguage || null,
+                                    mostUsedTopic: p.mostlyIteractedTopic || null,
+                                    lastInteraction: p.lastInteraction || null,
                                 }
                             });
                         }
                     }
                 } catch (err) {
                     console.error('Failed to fetch stats:', err);
+                }
+            },
+
+            fetchRecentInteractions: async () => {
+                const { token } = get();
+                if (!token) return;
+                try {
+                    const res = await fetch(`${API_URL}/interactions/recent?limit=10`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        set({ recentInteractions: data.interactions || [] });
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch recent interactions:', err);
                 }
             },
 
@@ -184,9 +249,9 @@ export const useAppStore = create<AppState>()(
                 if (token) {
                     fetch(`${API_URL}/sessions`, {
                         method: 'POST',
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}` 
+                            'Authorization': `Bearer ${token}`
                         },
                         body: JSON.stringify({ sessionId: newId, title: 'New Chat', messages: [] })
                     }).catch(console.error);
@@ -255,14 +320,14 @@ export const useAppStore = create<AppState>()(
                 if (token && updatedSession) {
                     fetch(`${API_URL}/sessions`, {
                         method: 'POST',
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}` 
+                            'Authorization': `Bearer ${token}`
                         },
-                        body: JSON.stringify({ 
-                            sessionId, 
-                            title: updatedSession.title, 
-                            messages: updatedSession.messages 
+                        body: JSON.stringify({
+                            sessionId,
+                            title: updatedSession.title,
+                            messages: updatedSession.messages
                         })
                     }).catch(console.error);
                 }
@@ -279,14 +344,9 @@ export const useAppStore = create<AppState>()(
                         },
                     };
                 }),
-
-            addXP: (amount: number) =>
-                set((state) => ({
-                    stats: { ...state.stats, xp: state.stats.xp + amount },
-                })),
         }),
         {
-            name: 'mentor-store-v3', // bumped version to clear old schema caches
+            name: 'gearup-store-v1',
             storage: createJSONStorage(() => idbStorage),
             partialize: (s) => ({
                 sessions: s.sessions,
@@ -294,6 +354,7 @@ export const useAppStore = create<AppState>()(
                 currentSessionId: s.currentSessionId,
                 user: s.user,
                 token: s.token,
+                recentInteractions: s.recentInteractions,
             }),
         }
     )
