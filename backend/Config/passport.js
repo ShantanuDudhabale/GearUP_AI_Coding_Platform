@@ -76,7 +76,7 @@ if (googleClientID && googleClientSecret) {
       {
         clientID: googleClientID,
         clientSecret: googleClientSecret,
-        callbackURL: '/api/auth/google/callback'
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback'
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
@@ -105,7 +105,7 @@ if (githubClientID && githubClientSecret) {
       {
         clientID: githubClientID,
         clientSecret: githubClientSecret,
-        callbackURL: '/api/auth/github/callback'
+        callbackURL: process.env.GITHUB_CALLBACK_URL || '/api/auth/github/callback'
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {

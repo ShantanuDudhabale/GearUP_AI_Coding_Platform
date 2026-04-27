@@ -32,7 +32,7 @@ export interface RecentInteraction {
     detectedLanguage: string;
     dificultyLevel: string;
     topic: string | null;
-    type: 'like' | 'dislike';
+    type: 'like' | 'dislike' | 'chat' | 'query';
     createdAt: string;
 }
 
@@ -53,9 +53,20 @@ export interface DashboardStats {
     lastInteraction: string | null;
 }
 
+// Added extra comprehensive tracking models
+export interface CodingExperienceData {
+    yearsExperience: number;
+    primaryLanguages: string[];
+    secondaryLanguages: string[];
+    githubUrl: string | null;
+    portfolioUrl: string | null;
+    description: string;
+}
+
 interface AppState {
     // Auth
     user: any | null;
+    codingExperience: CodingExperienceData | null;
     token: string | null;
     // Status
     isOffline: boolean;
@@ -113,10 +124,25 @@ const defaultStats: DashboardStats = {
     lastInteraction: null,
 };
 
+// Keyword language scanner for auto-tracking interactions
+const guessLanguage = (query: string): string => {
+    const text = query.toLowerCase();
+    if (text.includes('python') || text.includes('def ')) return 'python';
+    if (text.includes('java') || text.includes('public class')) return 'java';
+    if (text.includes('script') || text.includes('function ') || text.includes('console.log')) return 'javascript';
+    if (text.includes('c++') || text.includes('#include')) return 'cpp';
+    if (text.includes('ruby')) return 'ruby';
+    if (text.includes('go ') || text.includes('func ')) return 'go';
+    if (text.includes('rust') || text.includes('fn ')) return 'rust';
+    if (text.includes('sql') || text.includes('select ') || text.includes('insert into')) return 'sql';
+    return 'javascript'; // Default
+};
+
 export const useAppStore = create<AppState>()(
     persist(
         (set, get) => ({
             user: null,
+            codingExperience: null,
             token: null,
             isOffline: false,
             isListening: false,
@@ -131,7 +157,9 @@ export const useAppStore = create<AppState>()(
 
             setUser: (user, token) => {
                 const oldToken = get().token;
-                set({ user, token });
+                // user object usually contains codingExperience from /api/auth/me
+                const experience = user?.codingExperience || null;
+                set({ user, token, codingExperience: experience });
                 if (user && token && oldToken !== token) {
                     get().fetchStats();
                     get().fetchSessions();
@@ -141,6 +169,7 @@ export const useAppStore = create<AppState>()(
 
             logout: () => set({
                 user: null,
+                codingExperience: null,
                 token: null,
                 sessions: [],
                 recentInteractions: [],
@@ -165,7 +194,6 @@ export const useAppStore = create<AppState>()(
                         const data = await res.json();
                         const p = data.progress;
                         if (p) {
-                            // Convert MongoDB Maps to plain objects
                             const toObj = (val: any): Record<string, number> => {
                                 if (!val) return {};
                                 if (val instanceof Map) return Object.fromEntries(val);
@@ -300,6 +328,7 @@ export const useAppStore = create<AppState>()(
                     newSessions[sessionIndex] = updatedSession;
                     newSessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
+                    // Optimistic update
                     const statsUpdate = message.role === 'assistant' ? {
                         completedLessons: state.stats.completedLessons + 1,
                         savedCodes: state.stats.savedCodes + 1,
@@ -317,6 +346,32 @@ export const useAppStore = create<AppState>()(
 
                 const { token, sessions } = get();
                 const updatedSession = sessions.find(s => s.id === sessionId);
+
+                if (token && message.role === 'user') {
+                    // Send interaction log for tracking minute details permanently
+                    const guessedLanguage = guessLanguage(message.content);
+                    fetch(`${API_URL}/interactions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            type: 'query',
+                            questionText: message.content,
+                            questionType: 'text',
+                            detectedLanguage: guessedLanguage,
+                            dificultyLevel: 'medium', // Default
+                            topic: 'general',
+                            sessionId
+                        })
+                    }).then(() => {
+                        // REFETCH data silently to immediately sync DB timeline updates across the app dashboard
+                        get().fetchStats();
+                        get().fetchRecentInteractions();
+                    }).catch(console.error);
+                }
+
                 if (token && updatedSession) {
                     fetch(`${API_URL}/sessions`, {
                         method: 'POST',
@@ -346,7 +401,7 @@ export const useAppStore = create<AppState>()(
                 }),
         }),
         {
-            name: 'gearup-store-v1',
+            name: 'gearup-store-v2', // bumped to purge old cache formats safely
             storage: createJSONStorage(() => idbStorage),
             partialize: (s) => ({
                 sessions: s.sessions,
@@ -354,6 +409,7 @@ export const useAppStore = create<AppState>()(
                 currentSessionId: s.currentSessionId,
                 user: s.user,
                 token: s.token,
+                codingExperience: s.codingExperience,
                 recentInteractions: s.recentInteractions,
             }),
         }

@@ -21,7 +21,7 @@ router.delete('/me', authMiddleware, deleteAccount);
 // ─── OAuth ─────────────────────────────────────────────────────────────────
 
 // Google
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 router.get('/google/callback', (req, res, next) => {
   passport.authenticate('google', { session: false }, (err, user) => {
     if (err || !user) {
@@ -33,7 +33,7 @@ router.get('/google/callback', (req, res, next) => {
 });
 
 // GitHub
-router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
+router.get('/github', passport.authenticate('github', { scope: ['user:email'], session: false }));
 router.get('/github/callback', passport.authenticate('github', { session: false }), (req, res) => {
   res.redirect(`${process.env.FRONTEND_URL}/oauth-success?token=${req.user.token}`);
 });

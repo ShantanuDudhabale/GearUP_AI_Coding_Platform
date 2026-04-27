@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import {
     Trophy, Zap, Flame, Target, ArrowLeft, LayoutDashboard,
-    Code, BookOpen, TrendingUp, Star, Clock, Activity
+    Code, BookOpen, TrendingUp, Star, Clock, Activity, ThumbsUp, Database, Github, Link as LinkIcon
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -30,7 +30,7 @@ function langColor(lang: string): string {
     const colors: Record<string, string> = {
         python: '#3B82F6', javascript: '#EAB308', typescript: '#6366F1',
         java: '#F97316', c: '#06B6D4', 'c++': '#EC4899', rust: '#F59E0B',
-        go: '#10B981', ruby: '#EF4444', php: '#8B5CF6',
+        go: '#10B981', ruby: '#EF4444', php: '#8B5CF6', sql: '#0ea5e9'
     };
     return colors[lang.toLowerCase()] || '#6B7280';
 }
@@ -106,7 +106,7 @@ function LanguageBar({ stats }: { stats: Record<string, number> }) {
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-    const { stats, fetchStats, recentInteractions, fetchRecentInteractions, user } = useAppStore();
+    const { stats, codingExperience, fetchStats, recentInteractions, fetchRecentInteractions, user } = useAppStore();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -117,14 +117,15 @@ export default function DashboardPage() {
 
     if (!mounted) return <div className="min-h-screen bg-[#fafafa] dark:bg-[#0a0a0a]" />;
 
+    // Map store fields accurately
     const cards = [
+        {
+            icon: Zap, label: 'Total Interactions', value: stats.savedCodes || 0,
+            color: 'from-blue-500 to-cyan-600', sub: 'overall activity tracked'
+        },
         {
             icon: Trophy, label: 'Questions Solved', value: stats.completedLessons || 0,
             color: 'from-yellow-500 to-amber-600', sub: 'all time'
-        },
-        {
-            icon: Zap, label: 'Total Interactions', value: stats.savedCodes || 0,
-            color: 'from-blue-500 to-cyan-600', sub: 'all time'
         },
         {
             icon: Flame, label: 'Current Streak', value: `${stats.streak || 0}`,
@@ -172,9 +173,51 @@ export default function DashboardPage() {
 
             <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
 
+                {/* ── Developer Profile ────── */}
+                {codingExperience && (
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Developer Origin</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+                                className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-center">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Clock size={16} className="text-gray-500" />
+                                    <p className="text-sm font-semibold text-gray-500">Experience</p>
+                                </div>
+                                <p className="text-3xl font-extrabold">{codingExperience.yearsExperience || 0} <span className="text-base tracking-normal text-gray-400 font-medium">Years</span></p>
+                            </motion.div>
+
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                                className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-center md:col-span-2">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Database size={16} className="text-gray-500" />
+                                    <p className="text-sm font-semibold text-gray-500">Primary Stack</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {codingExperience.primaryLanguages && codingExperience.primaryLanguages.length > 0 ? (
+                                        codingExperience.primaryLanguages.map(lang => (
+                                            <span key={lang} className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-3 py-1.5 rounded-md font-semibold tracking-wide uppercase">{lang}</span>
+                                        ))
+                                    ) : (
+                                        <span className="text-sm text-gray-400">Not specified in profile</span>
+                                    )}
+                                </div>
+                                <div className="mt-4 flex gap-4 hidden">
+                                    {codingExperience.githubUrl && (
+                                        <a href={codingExperience.githubUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900"><Github size={14} /> GitHub</a>
+                                    )}
+                                    {codingExperience.portfolioUrl && (
+                                        <a href={codingExperience.portfolioUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900"><LinkIcon size={14} /> Portfolio</a>
+                                    )}
+                                </div>
+                            </motion.div>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── Stat Cards ────── */}
                 <div className="mb-10">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Overview</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Learning Overview</h2>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {cards.map((card, i) => {
                             const Icon = card.icon;
@@ -221,31 +264,36 @@ export default function DashboardPage() {
                     {/* ── Left: Activity + Weak Topics ────── */}
                     <div className="lg:col-span-2 space-y-8">
 
-                        {/* Recent Activity */}
+                        {/* Recent Activity Live Feed */}
                         <motion.section
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4 }}
-                            className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm"
+                            className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm relative overflow-hidden"
                         >
+                            <div className="absolute top-0 right-0 mt-6 mr-6 flex items-center gap-2">
+                                <span className="relative flex h-2.5 w-2.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                </span>
+                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Live</span>
+                            </div>
+
                             <div className="flex items-center gap-2 mb-6">
                                 <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
                                     <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
                                 </div>
-                                <h2 className="text-lg font-bold">Recent Activity</h2>
-                                {hasActivity && (
-                                    <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">
-                                        {recentInteractions.length} recent
-                                    </span>
-                                )}
+                                <h2 className="text-lg font-bold">Live Interactivity Feed</h2>
                             </div>
 
                             {hasActivity ? (
                                 <div className="space-y-0">
                                     {recentInteractions.map((item, i) => (
-                                        <div key={item._id} className="flex gap-4">
+                                        <motion.div 
+                                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                                          key={item._id} className="flex gap-4">
                                             <div className="flex flex-col items-center">
-                                                <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${item.type === 'like' ? 'bg-green-400' : 'bg-red-400'}`} />
+                                                <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${item.type === 'query' || item.type === 'chat' ? 'bg-indigo-400 ring-2 ring-indigo-100 dark:ring-indigo-900' : 'bg-green-400'}`} />
                                                 {i < recentInteractions.length - 1 && (
                                                     <div className="flex-1 w-px bg-gray-100 dark:bg-gray-800 my-1" />
                                                 )}
@@ -257,10 +305,11 @@ export default function DashboardPage() {
                                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                     {item.detectedLanguage && (
                                                         <span
-                                                            className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded capitalize"
+                                                            className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded capitalize uppercase tracking-wide border"
                                                             style={{
-                                                                backgroundColor: langColor(item.detectedLanguage) + '20',
-                                                                color: langColor(item.detectedLanguage)
+                                                                backgroundColor: langColor(item.detectedLanguage) + '10',
+                                                                color: langColor(item.detectedLanguage),
+                                                                borderColor: langColor(item.detectedLanguage) + '40'
                                                             }}
                                                         >
                                                             <Code size={10} />
@@ -268,7 +317,7 @@ export default function DashboardPage() {
                                                         </span>
                                                     )}
                                                     {item.dificultyLevel && (
-                                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium capitalize ${diffBadgeClass(item.dificultyLevel)}`}>
+                                                        <span className={`text-[10px] px-2 py-0.5 border rounded font-semibold capitalize tracking-wide ${diffBadgeClass(item.dificultyLevel)}`}>
                                                             {item.dificultyLevel}
                                                         </span>
                                                     )}
@@ -277,14 +326,14 @@ export default function DashboardPage() {
                                                     </span>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="text-center py-8">
                                     <BookOpen size={32} className="mx-auto text-gray-300 dark:text-gray-700 mb-3" />
                                     <p className="text-sm text-gray-500 font-medium">No activity yet</p>
-                                    <p className="text-xs text-gray-400 mt-1">Start chatting with the AI to track your learning.</p>
+                                    <p className="text-xs text-gray-400 mt-1">Start chatting with the AI to dynamically sync your progress.</p>
                                 </div>
                             )}
                         </motion.section>
@@ -300,10 +349,10 @@ export default function DashboardPage() {
                                 <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                                     <Code size={18} className="text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <h2 className="text-lg font-bold">Language Usage</h2>
+                                <h2 className="text-lg font-bold">Language Analytics</h2>
                                 {stats.mostUsedLanguage && (
                                     <span className="ml-auto text-xs text-gray-500">
-                                        Most used: <span className="font-semibold capitalize text-gray-700 dark:text-gray-300">{stats.mostUsedLanguage}</span>
+                                        Dominant: <span className="font-semibold capitalize text-gray-700 dark:text-gray-300">{stats.mostUsedLanguage}</span>
                                     </span>
                                 )}
                             </div>

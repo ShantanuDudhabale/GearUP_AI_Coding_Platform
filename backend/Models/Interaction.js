@@ -9,7 +9,7 @@ const interactionSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ["like", "dislike"],
+        enum: ["like", "dislike", "chat", "query"],
         required: true
     },
     questionText: {
