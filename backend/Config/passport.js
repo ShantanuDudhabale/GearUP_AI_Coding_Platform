@@ -6,10 +6,18 @@ import Progress from '../Models/Progress.js';
 import CodingExperience from '../Models/CodingExperience.js';
 import generateToken from '../Utils/generateToken.js';
 
+function isGmailAddress(email) {
+  return typeof email === 'string' && /@(gmail\.com|googlemail\.com)$/i.test(email);
+}
+
 async function findOrCreateUser(profile, provider) {
   const email = profile.emails && profile.emails[0]?.value;
   if (!email && provider !== 'github') {
     throw new Error('No email found in profile');
+  }
+
+  if (provider === 'google' && email && !isGmailAddress(email)) {
+    throw new Error('Google sign-in requires a Gmail address');
   }
   
   // For GitHub, if email is private, use a fallback
@@ -56,44 +64,62 @@ async function findOrCreateUser(profile, provider) {
   return { user, token };
 }
 
-// Google Strategy
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: '/api/auth/google/callback'
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
-      try {
-        const { user, token } = await findOrCreateUser(profile, 'google');
-        return done(null, { ...user.toObject(), token });
-      } catch (err) {
-        return done(err, null);
-      }
-    }
-  )
-);
+const googleClientID = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-// GitHub Strategy
-passport.use(
-  new GitHubStrategy(
-    {
-      clientID: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: '/api/auth/github/callback'
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
-      try {
-        const { user, token } = await findOrCreateUser(profile, 'github');
-        return done(null, { ...user.toObject(), token });
-      } catch (err) {
-        return done(err, null);
-      }
-    }
-  )
-);
+console.log('PASSPORT DEBUG | GOOGLE_CLIENT_ID:', googleClientID ? 'SET' : 'MISSING');
+console.log('PASSPORT DEBUG | GOOGLE_CLIENT_SECRET:', googleClientSecret ? 'SET' : 'MISSING');
 
-export default passport;
+if (googleClientID && googleClientSecret) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: googleClientID,
+        clientSecret: googleClientSecret,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback'
+      },
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          const { user, token } = await findOrCreateUser(profile, 'google');
+          return done(null, { ...user.toObject(), token });
+        } catch (err) {
+          return done(err, null);
+        }
+      }
+    )
+  );
+  console.log('PASSPORT DEBUG | Google Strategy successfully registered');
+} else {
+  console.warn('Skipping Google OAuth setup: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set.');
+}
+
+const githubClientID = process.env.GITHUB_CLIENT_ID;
+const githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
+
+console.log('PASSPORT DEBUG | GITHUB_CLIENT_ID:', githubClientID ? 'SET' : 'MISSING');
+console.log('PASSPORT DEBUG | GITHUB_CLIENT_SECRET:', githubClientSecret ? 'SET' : 'MISSING');
+
+if (githubClientID && githubClientSecret) {
+  passport.use(
+    new GitHubStrategy(
+      {
+        clientID: githubClientID,
+        clientSecret: githubClientSecret,
+        callbackURL: process.env.GITHUB_CALLBACK_URL || '/api/auth/github/callback'
+      },
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          const { user, token } = await findOrCreateUser(profile, 'github');
+          return done(null, { ...user.toObject(), token });
+        } catch (err) {
+          return done(err, null);
+        }
+      }
+    )
+  );
+  console.log('PASSPORT DEBUG | GitHub Strategy successfully registered');
+} else {
+  console.warn('Skipping GitHub OAuth setup: GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET is not set.');
+}
 
 export default passport;

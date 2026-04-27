@@ -5,6 +5,41 @@ import Progress from '../Models/Progress.js';
 import CodingExperience from '../Models/CodingExperience.js';
 import generateToken from '../Utils/generateToken.js';
 
+// Get current authenticated user's full profile
+export const getMe = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const progress = await Progress.findOne({ userId });
+    const codingExp = await CodingExperience.findOne({ userId });
+
+    return res.status(200).json({
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        age: user.age,
+        bio: user.bio,
+        provider: user.provider,
+        isVerified: user.isVerified,
+        preferences: user.preferences,
+        progress: progress || null,
+        codingExperience: codingExp || null,
+        token: generateToken(user._id)
+      }
+    });
+  } catch (error) {
+    console.error('getMe error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
 // Register a new user
 export const register = async (req, res) => {
   try {
