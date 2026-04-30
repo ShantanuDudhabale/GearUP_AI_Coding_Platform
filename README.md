@@ -1,4 +1,4 @@
-# EDI-4th-sem-main
+# EDI-4th-sem
 
 This repository contains a full-stack project with both backend (Node/Express) and frontend (Next.js) components.
 
