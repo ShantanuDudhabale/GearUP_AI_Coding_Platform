@@ -142,9 +142,9 @@ GITHUB_CALLBACK_URL=http://localhost:5000/api/auth/github/callback
 
 #### Frontend Environment Variables (.env)
 ```env
-OLLAMA_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=qwen2.5-coder:3b
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+OLLAMA_URL=#
+OLLAMA_MODEL=#
+NEXT_PUBLIC_API_URL=#
 ```
 
 ---
