@@ -19,6 +19,7 @@ interface ISpeechRecognition extends EventTarget {
   interimResults: boolean;
   lang: string;
   onresult: ((e: ISpeechRecognitionEvent) => void) | null;
+  onstart: (() => void) | null;
   onend: (() => void) | null;
   onerror: (() => void) | null;
   start(): void;
@@ -33,6 +34,7 @@ export default function VoiceHero({ onSubmit, compact = false }: VoiceHeroProps)
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasSpeechSupport, setHasSpeechSupport] = useState(true);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const recognitionActiveRef = useRef(false);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -60,16 +62,24 @@ export default function VoiceHero({ onSubmit, compact = false }: VoiceHeroProps)
       setTranscript(final || interim);
     };
 
+    recognition.onstart = () => {
+      recognitionActiveRef.current = true;
+      setIsListening(true);
+    };
+
     recognition.onend = () => {
+      recognitionActiveRef.current = false;
       setIsListening(false);
     };
 
     recognition.onerror = () => {
+      recognitionActiveRef.current = false;
       setIsListening(false);
     };
 
     recognitionRef.current = recognition;
     return () => {
+      recognitionActiveRef.current = false;
       recognitionRef.current?.abort();
     };
   }, []);
@@ -90,16 +100,27 @@ export default function VoiceHero({ onSubmit, compact = false }: VoiceHeroProps)
 
   const toggleMic = useCallback(() => {
     if (isProcessing) return;
-    if (isListening) {
+    if (isListening || recognitionActiveRef.current) {
       recognitionRef.current?.stop();
+      recognitionActiveRef.current = false;
       setIsListening(false);
       if (transcript.trim()) {
         handleSubmit(transcript.trim());
       }
     } else {
       setTranscript('');
-      recognitionRef.current?.start();
-      setIsListening(true);
+      try {
+        recognitionRef.current?.start();
+        recognitionActiveRef.current = true;
+        setIsListening(true);
+      } catch (error) {
+        const name = error instanceof DOMException ? error.name : '';
+        if (name !== 'InvalidStateError') {
+          console.error('Speech recognition failed to start', error);
+        }
+        recognitionActiveRef.current = false;
+        setIsListening(false);
+      }
     }
   }, [isListening, isProcessing, transcript, handleSubmit]);
 

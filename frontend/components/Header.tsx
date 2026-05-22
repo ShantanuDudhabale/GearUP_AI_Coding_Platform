@@ -70,17 +70,20 @@ export default function Header({ isDark, setIsDark, onGetStarted, showDashboardB
                 <Menu size={20} />
               </motion.button>
             )}
-            <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-              <motion.div
-                className="text-3xl"
-                whileHover={{ rotate: 15, scale: 1.1 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-              >
-                🚀
-              </motion.div>
-              <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
-                CodeMentorAI
-              </span>
+            <Link href="/" className="flex items-center gap-2 cursor-pointer group">
+              <img
+                src="/logo.png"
+                alt="GearUp Technologies Logo"
+                className="h-10 w-auto"
+              />
+              <div className="flex flex-col">
+                <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
+                  CodeMentorAI
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  by GearUp Technologies 2026
+                </span>
+              </div>
             </Link>
           </div>
 

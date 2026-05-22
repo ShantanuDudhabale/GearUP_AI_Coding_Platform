@@ -1,10 +1,10 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useState, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import { generateLesson } from '@/lib/mockAI';
+import { addMessageToDatabase } from '@/lib/chatService';
 import VoiceHero from '@/components/VoiceHero';
 import AIResponseCard from '@/components/AIResponseCard';
 import { ChatMessage } from '@/store/useAppStore';
@@ -16,7 +16,48 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UserAvatarMenu from '@/components/UserAvatarMenu';
 
-const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
+const CONFETTI_COLORS = ['#2563eb', '#0891b2', '#f59e0b', '#22c55e', '#ef4444'];
+
+function LocalConfetti() {
+    return (
+        <div className="pointer-events-none fixed inset-0 z-[9990] overflow-hidden" aria-hidden="true">
+            {Array.from({ length: 72 }).map((_, index) => {
+                const left = (index * 37) % 100;
+                const delay = (index % 12) * 0.08;
+                const duration = 2.4 + (index % 7) * 0.16;
+                const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];
+                const size = 6 + (index % 4);
+
+                return (
+                    <span
+                        key={index}
+                        className="absolute top-[-16px] rounded-sm"
+                        style={{
+                            left: `${left}%`,
+                            width: size,
+                            height: size * 1.6,
+                            backgroundColor: color,
+                            animation: `local-confetti-fall ${duration}s ease-out ${delay}s forwards`,
+                            transform: `rotate(${index * 17}deg)`,
+                        }}
+                    />
+                );
+            })}
+            <style jsx>{`
+                @keyframes local-confetti-fall {
+                    0% {
+                        opacity: 1;
+                        transform: translate3d(0, -20px, 0) rotate(0deg);
+                    }
+                    100% {
+                        opacity: 0;
+                        transform: translate3d(32px, 105vh, 0) rotate(620deg);
+                    }
+                }
+            `}</style>
+        </div>
+    );
+}
 
 export default function ChatPage() {
     const router = useRouter();
@@ -26,26 +67,23 @@ export default function ChatPage() {
         createNewSession, addMessageToSession,
         unlockBadge, showConfetti, setShowConfetti,
         loadSession, deleteSession,
+        user,
     } = useAppStore();
 
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [mounted, setMounted] = useState(false);
-    const user = useAppStore(s => s.user);
-
-    // All hooks must be called unconditionally before any early returns
-    useEffect(() => {
-        useAppStore.setState({ currentSessionId: null });
-    }, []);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
+    // Redirect if not logged in — wait for hydration first
     useEffect(() => {
-        if (mounted && !user) {
-            router.push('/');
+        if (!mounted) return;
+        if (!user) {
+            router.replace('/');
         }
-    }, [user, router, mounted]);
+    }, [mounted, user, router]);
 
     useEffect(() => {
         if (showConfetti) {
@@ -71,6 +109,14 @@ export default function ChatPage() {
         };
         addMessageToSession(sessionId, userMsg);
 
+        // Save user message to database
+        try {
+            await addMessageToDatabase(sessionId, userMsg);
+            console.log('✅ User message saved to database');
+        } catch (error) {
+            console.error('❌ Failed to save user message:', error);
+        }
+
         const updatedSession = useAppStore.getState().sessions.find(s => s.id === sessionId);
         const messagesSoFar = updatedSession ? updatedSession.messages : [userMsg];
         const steps = await generateLesson(messagesSoFar);
@@ -81,6 +127,15 @@ export default function ChatPage() {
             timestamp: new Date().toISOString()
         };
         addMessageToSession(sessionId, aiMsg);
+
+        // Save AI message to database
+        try {
+            await addMessageToDatabase(sessionId, aiMsg);
+            console.log('✅ AI message saved to database');
+        } catch (error) {
+            console.error('❌ Failed to save AI message:', error);
+        }
+
         unlockBadge('first_question');
         setShowConfetti(true);
         setProcessing(false);
@@ -99,8 +154,13 @@ export default function ChatPage() {
         deleteSession(id);
     };
 
-    // Show loading screen until mounted and authenticated
-    if (!mounted || !user) {
+    // Show loading until mounted (prevents hydration mismatch)
+    if (!mounted) {
+        return <div className="h-screen w-full bg-gray-50 dark:bg-gray-950" />;
+    }
+
+    // If no user after mount, show blank while redirect happens
+    if (!user) {
         return <div className="h-screen w-full bg-gray-50 dark:bg-gray-950" />;
     }
 
@@ -108,10 +168,7 @@ export default function ChatPage() {
         <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
 
             {showConfetti && (
-                <Confetti recycle={false} numberOfPieces={240}
-                    colors={['#6C63FF', '#FFB703', '#00C2FF', '#ff6b35', '#ffffff']}
-                    style={{ position: 'fixed', top: 0, left: 0, zIndex: 9990 }}
-                />
+                <LocalConfetti />
             )}
 
             {/* ─── Sidebar ───────────────────────────────────────────────────────── */}
@@ -271,24 +328,27 @@ export default function ChatPage() {
                         ) : (
                             <div className="flex flex-col gap-6 w-full">
                                 <AnimatePresence>
-                                    {activeSession.messages.map((msg) => (
-                                        <motion.div
-                                            key={msg.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className="w-full"
-                                        >
-                                            {msg.role === 'user' ? (
-                                                <div className="flex justify-end w-full px-4 mb-2">
-                                                    <div className="bg-blue-100 dark:bg-blue-950/50 text-gray-900 dark:text-white px-6 py-4 rounded-3xl rounded-tr-sm max-w-[80%] border border-blue-300 dark:border-blue-700 shadow-lg">
-                                                        <p className="font-medium text-lg">{msg.content}</p>
+                                    {activeSession.messages.map((msg, index) => {
+                                        const isLatestMessage = index === activeSession.messages.length - 1;
+                                        return (
+                                            <motion.div
+                                                key={msg.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="w-full"
+                                            >
+                                                {msg.role === 'user' ? (
+                                                    <div className="flex justify-end w-full px-4 mb-2">
+                                                        <div className="bg-blue-100 dark:bg-blue-950/50 text-gray-900 dark:text-white px-6 py-4 rounded-3xl rounded-tr-sm max-w-[80%] border border-blue-300 dark:border-blue-700 shadow-lg">
+                                                            <p className="font-medium text-lg">{msg.content}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ) : (
-                                                msg.steps && <AIResponseCard message={msg} />
-                                            )}
-                                        </motion.div>
-                                    ))}
+                                                ) : (
+                                                    msg.steps && <AIResponseCard message={msg} isLatest={isLatestMessage} />
+                                                )}
+                                            </motion.div>
+                                        );
+                                    })}
                                 </AnimatePresence>
 
                                 <AnimatePresence>

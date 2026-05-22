@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import LoginModal from '@/components/LoginModal';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import LandingHero from '@/components/LandingHero';
 import LandingFeatures from '@/components/LandingFeatures';
 import LandingStats from '@/components/LandingStats';
@@ -13,17 +15,18 @@ export default function LandingPage() {
   const router = useRouter();
   const { showLoginModal, setShowLoginModal, user } = useAppStore();
   const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const theme = localStorage.getItem('theme');
+    setIsDark(theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches));
   }, []);
 
   const handleGetStarted = () => {
     if (user) {
-      // If logged in, navigate to chat
       router.push('/chat');
     } else {
-      // If not logged in, show login modal
       setShowLoginModal(true);
     }
   };
@@ -31,7 +34,20 @@ export default function LandingPage() {
   if (!mounted) return <div className="min-h-screen bg-white dark:bg-gray-950" />;
 
   return (
+<<<<<<< HEAD
     <main className="relative overflow-x-hidden bg-white dark:bg-gray-950 text-gray-900 dark:text-white">
+=======
+    <div className="relative overflow-x-hidden bg-white dark:bg-gray-950 text-gray-900 dark:text-white">
+      <CursorGlow />
+      
+      {/* Header */}
+      <Header 
+        isDark={isDark} 
+        setIsDark={setIsDark}
+        onGetStarted={handleGetStarted}
+        showDashboardBtn={!!user}
+      />
+>>>>>>> origin/saurabh
 
       {/* Login Modal — triggered from hero CTA or from Header's Get Started */}
       <LoginModal
@@ -39,7 +55,8 @@ export default function LandingPage() {
         onClose={() => setShowLoginModal(false)}
       />
 
-      <LandingHero onGetStarted={handleGetStarted} />
+      <main className="relative pt-16">
+        <LandingHero onGetStarted={handleGetStarted} />
       <LandingFeatures />
       <LandingStats />
       <LandingTestimonials />
@@ -56,7 +73,7 @@ export default function LandingPage() {
             Ready to Start Learning?
           </h2>
           <p className="text-blue-100 text-lg mb-8">
-            Join 500,000+ learners already using CodeMentorAI to master coding.
+            Join thousands of learners already using CodeMentorAI to master coding with AI-powered guidance.
           </p>
           <button
             onClick={handleGetStarted}
@@ -67,22 +84,10 @@ export default function LandingPage() {
         </div>
       </section>
 
+      </main>
+
       {/* Footer */}
-      <footer id="footer" className="py-12 bg-gray-900 dark:bg-black text-center">
-        <div className="max-w-4xl mx-auto px-4">
-          <p className="text-2xl mb-3">🚀</p>
-          <p className="font-bold text-white text-lg mb-2">CodeMentorAI</p>
-          <p className="text-gray-500 text-sm mb-6">AI-powered coding education for the next generation</p>
-          <div className="flex justify-center gap-6 text-gray-500 text-sm mb-8">
-            <a href="#features" className="hover:text-gray-300 transition-colors">Features</a>
-            <a href="#stats" className="hover:text-gray-300 transition-colors">About</a>
-            <button onClick={handleGetStarted} className="hover:text-gray-300 transition-colors">
-              Get Started
-            </button>
-          </div>
-          <p className="text-gray-600 text-xs">© 2026 CodeMentorAI · Built for the next generation of coders 🚀</p>
-        </div>
-      </footer>
-    </main>
+      <Footer />
+    </div>
   );
 }
