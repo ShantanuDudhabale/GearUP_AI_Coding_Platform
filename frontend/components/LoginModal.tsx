@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, Github } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
+import { syncSessionsWithDatabase } from '@/lib/chatService';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -37,7 +38,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     const reset = () => { setEmail(''); setPassword(''); setName(''); setDob(''); setError(''); };
 
-    const { setUser } = useAppStore();
+    const { setUser, setSessions } = useAppStore();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,11 +51,13 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
         setIsLoading(true);
         try {
-            const endpoint = mode === 'login' ? 'http://localhost:5000/api/auth/login' : 'http://localhost:5000/api/auth/register';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const endpoint = mode === 'login' ? `${apiUrl}/auth/login` : `${apiUrl}/auth/register`;
             const payload = mode === 'login'
                 ? { email, password }
                 : { username: name, email, password, dob };
 
+            console.log('Calling endpoint:', endpoint);
             const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -69,6 +72,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             // Set user and token in global state
             if (data.user && data.user.token) {
                 setUser(data.user, data.user.token);
+                
+                // Sync chat sessions from database after login
+                console.log('🔄 Syncing chat sessions after login...');
+                const dbSessions = await syncSessionsWithDatabase();
+                if (dbSessions && dbSessions.length > 0) {
+                    setSessions(dbSessions);
+                    console.log('✅ Loaded', dbSessions.length, 'sessions from database');
+                }
+                
                 onClose();
                 reset();
                 router.push('/chat');
@@ -76,6 +88,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 // Handle registration without auto-login (though our backend returns user and token now)
                 if (data.user) {
                     setUser(data.user, data.user.token);
+                    
+                    // Sync chat sessions from database after signup
+                    console.log('🔄 Syncing chat sessions after signup...');
+                    const dbSessions = await syncSessionsWithDatabase();
+                    if (dbSessions && dbSessions.length > 0) {
+                        setSessions(dbSessions);
+                        console.log('✅ Loaded', dbSessions.length, 'sessions from database');
+                    }
+                    
                     onClose();
                     reset();
                     router.push('/chat');

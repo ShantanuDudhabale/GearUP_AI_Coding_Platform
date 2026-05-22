@@ -105,7 +105,7 @@ export default function LandingHero({ onGetStarted }: LandingHeroProps) {
                 >
                     <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-[12px] font-semibold tracking-wide">
                         <Sparkles size={12} />
-                        AI-Powered Coding Education
+                        GearUp Technologies 2026
                     </span>
                 </motion.div>
 
@@ -129,7 +129,7 @@ export default function LandingHero({ onGetStarted }: LandingHeroProps) {
                         transition={{ duration: 0.65, delay: 0.8, ease: 'easeOut' }}
                         className="relative inline-block mt-2"
                     >
-                        <span className="relative z-10">Powered by GearUP</span>
+                        <span className="relative z-10">with AI Guidance</span>
                         <motion.span
                             className="absolute inset-x-0 bottom-1 h-[3px] rounded-full bg-gradient-to-r from-blue-600 to-violet-600 opacity-40"
                             initial={{ scaleX: 0, originX: 0 }}
@@ -186,7 +186,7 @@ export default function LandingHero({ onGetStarted }: LandingHeroProps) {
                                 <div key={i} className={`w-6 h-6 rounded-full border-2 border-white dark:border-gray-950 ${c}`} />
                             ))}
                         </div>
-                        <span>500K+ learners</span>
+                        <span>Trusted by learners worldwide</span>
                     </div>
                     <span className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
                     <div className="flex items-center gap-1">
@@ -196,7 +196,7 @@ export default function LandingHero({ onGetStarted }: LandingHeroProps) {
                         <span className="ml-1">4.9 / 5</span>
                     </div>
                     <span className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
-                    <span>Free forever</span>
+                    <span>GearUp Technologies 2026</span>
                 </motion.div>
             </motion.div>
 
