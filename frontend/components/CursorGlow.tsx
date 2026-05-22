@@ -1,13 +1,41 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function CursorGlow() {
   const cursorRef = useRef<HTMLDivElement>(null);
   const dotRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+
+  // Only enable custom cursor on the landing page
+  const isEnabled = mounted && pathname === '/';
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Manage body cursor style — hide native cursor only when glow is active
+  useEffect(() => {
+    if (!mounted) return;
+    if (isEnabled) {
+      document.body.style.cursor = 'none';
+    } else {
+      document.body.style.cursor = '';
+    }
+    return () => {
+      document.body.style.cursor = '';
+    };
+  }, [isEnabled, mounted]);
+
+  useEffect(() => {
+    if (!isEnabled) {
+      setVisible(false);
+      return;
+    }
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!visible) setVisible(true);
       if (cursorRef.current) {
@@ -17,18 +45,22 @@ export default function CursorGlow() {
         dotRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
       }
     };
+
     const handleMouseLeave = () => setVisible(false);
     const handleMouseEnter = () => setVisible(true);
 
     window.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseleave', handleMouseLeave);
     document.addEventListener('mouseenter', handleMouseEnter);
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseleave', handleMouseLeave);
       document.removeEventListener('mouseenter', handleMouseEnter);
     };
-  }, [visible]);
+  }, [visible, isEnabled]);
+
+  if (!mounted || !isEnabled) return null;
 
   return (
     <>

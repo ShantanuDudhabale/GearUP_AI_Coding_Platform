@@ -43,7 +43,6 @@ export interface DashboardStats {
     streak: number;
     xp: number;
     badges: string[];
-<<<<<<< HEAD
     level: number;
     highestStreak: number;
     languageStats: Record<string, number>;
@@ -52,6 +51,12 @@ export interface DashboardStats {
     mostUsedLanguage: string | null;
     mostUsedTopic: string | null;
     lastInteraction: string | null;
+    skills: SkillLevel[];
+    exercisesSolved: number;
+    projectsSubmitted: number;
+    errorFrequency: number;
+    currentLevel: string;
+    dailyChallenges: Challenge[];
 }
 
 // Added extra comprehensive tracking models
@@ -62,14 +67,6 @@ export interface CodingExperienceData {
     githubUrl: string | null;
     portfolioUrl: string | null;
     description: string;
-=======
-    skills: SkillLevel[];
-    exercisesSolved: number;
-    projectsSubmitted: number;
-    errorFrequency: number;
-    currentLevel: string;
-    dailyChallenges: Challenge[];
->>>>>>> origin/saurabh
 }
 
 interface AppState {
@@ -104,17 +101,14 @@ interface AppState {
     addMessageToSession: (sessionId: string, message: ChatMessage) => void;
     deleteSession: (id: string) => void;
     unlockBadge: (id: string) => void;
-<<<<<<< HEAD
     fetchStats: () => Promise<void>;
     fetchSessions: () => Promise<void>;
     fetchRecentInteractions: () => Promise<void>;
+    addXP: (amount: number) => void;
+    completeExercise: (language: string) => void;
+    submitProject: () => void;
+    completeChallenge: (challengeId: string) => void;
 }
-
-const idbStorage = {
-    getItem: async (name: string) => (await get<string>(name)) ?? null,
-    setItem: async (name: string, value: string) => set(name, value),
-    removeItem: async (name: string) => del(name),
-};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -133,6 +127,37 @@ const defaultStats: DashboardStats = {
     mostUsedLanguage: null,
     mostUsedTopic: null,
     lastInteraction: null,
+    skills: [
+        { skill: 'HTML', level: 45, exercises: 12, lastPracticed: new Date().toISOString() },
+        { skill: 'CSS', level: 38, exercises: 8, lastPracticed: new Date().toISOString() },
+        { skill: 'JavaScript', level: 52, exercises: 15, lastPracticed: new Date().toISOString() },
+        { skill: 'Python', level: 30, exercises: 6, lastPracticed: new Date().toISOString() },
+        { skill: 'Arduino', level: 20, exercises: 3, lastPracticed: new Date().toISOString() }
+    ],
+    exercisesSolved: 44,
+    projectsSubmitted: 3,
+    errorFrequency: 12,
+    currentLevel: 'Explorer',
+    dailyChallenges: [
+        {
+            id: '1',
+            title: 'Create a Button Click Counter',
+            description: 'Build a simple counter that increases when you click a button',
+            difficulty: 'easy',
+            xpReward: 50,
+            language: 'JavaScript',
+            completed: false,
+        },
+        {
+            id: '2',
+            title: 'Build a Temperature Converter',
+            description: 'Convert between Celsius and Fahrenheit',
+            difficulty: 'medium',
+            xpReward: 100,
+            language: 'Python',
+            completed: false,
+        },
+    ],
 };
 
 // Keyword language scanner for auto-tracking interactions
@@ -148,15 +173,6 @@ const guessLanguage = (query: string): string => {
     if (text.includes('sql') || text.includes('select ') || text.includes('insert into')) return 'sql';
     return 'javascript'; // Default
 };
-
-=======
-    addXP: (amount: number) => void;
-    completeExercise: (language: string) => void;
-    submitProject: () => void;
-    completeChallenge: (challengeId: string) => void;
-}
-
->>>>>>> origin/saurabh
 export const useAppStore = create<AppState>()(
     persist(
         (set, get) => ({
@@ -171,7 +187,6 @@ export const useAppStore = create<AppState>()(
             currentSessionId: null,
             sessions: [],
             transcript: '',
-<<<<<<< HEAD
             stats: defaultStats,
             recentInteractions: [],
 
@@ -196,51 +211,7 @@ export const useAppStore = create<AppState>()(
                 stats: defaultStats,
             }),
 
-=======
-            stats: {
-                completedLessons: 0,
-                savedCodes: 0,
-                weakTopics: ['Loops', 'Functions', 'Arrays'],
-                streak: 3,
-                xp: 120,
-                badges: [],
-                skills: [
-                    { skill: 'HTML', level: 45, exercises: 12, lastPracticed: new Date().toISOString() },
-                    { skill: 'CSS', level: 38, exercises: 8, lastPracticed: new Date().toISOString() },
-                    { skill: 'JavaScript', level: 52, exercises: 15, lastPracticed: new Date().toISOString() },
-                    { skill: 'Python', level: 30, exercises: 6, lastPracticed: new Date().toISOString() },
-                    { skill: 'Arduino', level: 20, exercises: 3, lastPracticed: new Date().toISOString() },
-                ],
-                exercisesSolved: 44,
-                projectsSubmitted: 3,
-                errorFrequency: 12,
-                currentLevel: 'Explorer',
-                dailyChallenges: [
-                    {
-                        id: '1',
-                        title: 'Create a Button Click Counter',
-                        description: 'Build a simple counter that increases when you click a button',
-                        difficulty: 'easy',
-                        xpReward: 50,
-                        language: 'JavaScript',
-                        completed: false,
-                    },
-                    {
-                        id: '2',
-                        title: 'Build a Temperature Converter',
-                        description: 'Convert between Celsius and Fahrenheit',
-                        difficulty: 'medium',
-                        xpReward: 100,
-                        language: 'Python',
-                        completed: false,
-                    },
-                ],
-            },
-
-            setUser: (user, token) => set({ user, token }),
-            logout: () => set({ user: null, token: null }),
             setSessions: (sessions) => set({ sessions }),
->>>>>>> origin/saurabh
             setOffline: (v) => set({ isOffline: v }),
             setListening: (v) => set({ isListening: v }),
             setProcessing: (v) => set({ isProcessing: v }),
@@ -266,8 +237,9 @@ export const useAppStore = create<AppState>()(
                                 return {};
                             };
 
-                            set({
+                            set((state) => ({
                                 stats: {
+                                    ...state.stats,
                                     completedLessons: p.solvedQuestions || 0,
                                     savedCodes: p.totalInteractions || 0,
                                     weakTopics: p.mostlyIteractedTopic ? [p.mostlyIteractedTopic] : [],
@@ -283,7 +255,7 @@ export const useAppStore = create<AppState>()(
                                     mostUsedTopic: p.mostlyIteractedTopic || null,
                                     lastInteraction: p.lastInteraction || null,
                                 }
-                            });
+                            }));
                         }
                     }
                 } catch (err) {
@@ -337,8 +309,6 @@ export const useAppStore = create<AppState>()(
                     sessions: [newSession, ...state.sessions].slice(0, 50),
                     currentSessionId: newId,
                 }));
-<<<<<<< HEAD
-
                 const { token } = get();
                 if (token) {
                     fetch(`${API_URL}/sessions`, {
@@ -350,8 +320,6 @@ export const useAppStore = create<AppState>()(
                         body: JSON.stringify({ sessionId: newId, title: 'New Chat', messages: [] })
                     }).catch(console.error);
                 }
-
-=======
                 
                 // Save new session to database
                 if (typeof window !== 'undefined') {
@@ -361,8 +329,6 @@ export const useAppStore = create<AppState>()(
                         );
                     });
                 }
-                
->>>>>>> origin/saurabh
                 return newId;
             },
 
@@ -477,13 +443,6 @@ export const useAppStore = create<AppState>()(
                         },
                     };
                 }),
-<<<<<<< HEAD
-        }),
-        {
-            name: 'gearup-store-v2', // bumped to purge old cache formats safely
-            storage: createJSONStorage(() => idbStorage),
-=======
-
             addXP: (amount) =>
                 set((state) => ({
                     stats: { ...state.stats, xp: state.stats.xp + amount },
@@ -533,7 +492,6 @@ export const useAppStore = create<AppState>()(
         {
             name: 'mentor-store-v4',
             storage: createJSONStorage(() => localStorage),
->>>>>>> origin/saurabh
             partialize: (s) => ({
                 sessions: s.sessions,
                 stats: s.stats,

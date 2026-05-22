@@ -24,10 +24,10 @@ body {
   color: #e8e8ff;
   font-family: var(--font-inter), sans-serif;
   overflow-x: hidden;
-  cursor: none;
+  cursor: default;
 }
 
-/* Custom Cursor */
+/* Custom Cursor - Only show on pages where enabled */
 .cursor-dot {
   position: fixed;
   width: 8px;

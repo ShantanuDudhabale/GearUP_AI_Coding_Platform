@@ -1,22 +1,16 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-<<<<<<< HEAD
 import passport from 'passport';
 import './Config/passport.js';
 import authRoutes from './Routes/authRoutes.js';    
 import interactionRoutes from './Routes/interactionRoutes.js';
 import progressRoutes from './Routes/progressRoutes.js';
 import sessionRoutes from './Routes/sessionRoutes.js';
-import connectDB from './Config/database.js';    
-=======
-import dotenv from 'dotenv';
-import authRoutes from './Routes/authRoutes.js';
 import chatRoutes from './Routes/chatRoutes.js';
 import statsRoutes from './Routes/statsRoutes.js';
 import connectDB from './Config/database.js';
 import { rateLimit } from './Middlewares/rateLimit.js';
->>>>>>> origin/saurabh
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -43,15 +37,7 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
-<<<<<<< HEAD
 app.use(passport.initialize());
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/interactions', interactionRoutes);
-app.use('/api/progress', progressRoutes);
-app.use('/api/sessions', sessionRoutes);
-=======
 app.use(rateLimit); // Apply rate limiting to all routes
 
 // Health Check Endpoint
@@ -61,6 +47,9 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/interactions', interactionRoutes);
+app.use('/api/progress', progressRoutes);
+app.use('/api/sessions', sessionRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/stats', statsRoutes);
 
@@ -77,7 +66,6 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 });
->>>>>>> origin/saurabh
 
 // Start the server
 app.listen(PORT, () => {

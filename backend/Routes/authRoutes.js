@@ -5,7 +5,7 @@ import authMiddleware from "../Middlewares/middleware.js";
 
 const router = express.Router();
 
-// Register and login routes
+// ─── Email/Password Auth ────────────────────────────────────────────────────
 router.post('/register', register);
 router.post('/login', login);
 
@@ -20,8 +20,17 @@ router.delete('/me', authMiddleware, deleteAccount);
 
 // ─── OAuth ─────────────────────────────────────────────────────────────────
 
-// Google
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
+// Google — initiate
+router.get('/google', (req, res, next) => {
+  try {
+    passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+  } catch (err) {
+    const msg = encodeURIComponent('Google OAuth is not configured on this server.');
+    res.redirect(`${process.env.FRONTEND_URL}/oauth-failure?message=${msg}`);
+  }
+});
+
+// Google — callback
 router.get('/google/callback', (req, res, next) => {
   passport.authenticate('google', { session: false }, (err, user) => {
     if (err || !user) {
@@ -32,10 +41,25 @@ router.get('/google/callback', (req, res, next) => {
   })(req, res, next);
 });
 
-// GitHub
-router.get('/github', passport.authenticate('github', { scope: ['user:email'], session: false }));
-router.get('/github/callback', passport.authenticate('github', { session: false }), (req, res) => {
-  res.redirect(`${process.env.FRONTEND_URL}/oauth-success?token=${req.user.token}`);
+// GitHub — initiate
+router.get('/github', (req, res, next) => {
+  try {
+    passport.authenticate('github', { scope: ['user:email'], session: false })(req, res, next);
+  } catch (err) {
+    const msg = encodeURIComponent('GitHub OAuth is not configured on this server.');
+    res.redirect(`${process.env.FRONTEND_URL}/oauth-failure?message=${msg}`);
+  }
+});
+
+// GitHub — callback
+router.get('/github/callback', (req, res, next) => {
+  passport.authenticate('github', { session: false }, (err, user) => {
+    if (err || !user) {
+      const message = err?.message || 'GitHub authentication failed';
+      return res.redirect(`${process.env.FRONTEND_URL}/oauth-failure?message=${encodeURIComponent(message)}`);
+    }
+    return res.redirect(`${process.env.FRONTEND_URL}/oauth-success?token=${user.token}`);
+  })(req, res, next);
 });
 
 export default router;

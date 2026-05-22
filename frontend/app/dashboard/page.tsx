@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/useAppStore';
 import {
     Trophy, Zap, Flame, Target, ArrowLeft, LayoutDashboard,
-    Code, BookOpen, TrendingUp, Star, Clock, Activity, ThumbsUp, Database, Github, Link as LinkIcon
+    Code, BookOpen, TrendingUp, Star, Clock, Activity, Database, Github, Link as LinkIcon
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -137,7 +137,6 @@ export default function DashboardPage() {
         },
     ];
 
-    const hasLangStats = Object.keys(stats.languageStats || {}).length > 0;
     const hasActivity = recentInteractions && recentInteractions.length > 0;
 
     return (

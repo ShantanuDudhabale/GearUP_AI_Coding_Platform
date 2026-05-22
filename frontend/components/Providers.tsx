@@ -3,11 +3,14 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from './Header';
+import LoginModal from './LoginModal';
+import { useAppStore } from '@/store/useAppStore';
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const { showLoginModal, setShowLoginModal, user } = useAppStore();
 
   // Dashboard and Chat have their own layouts — no global header there
   const isDashboardOrChat = pathname?.startsWith('/dashboard') || pathname?.startsWith('/chat');
@@ -15,7 +18,6 @@ export default function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
     const savedTheme = localStorage.getItem('theme');
-    // Default light — only switch dark if explicitly saved
     const isDarkMode = savedTheme === 'dark';
     setIsDark(isDarkMode);
     if (isDarkMode) {
@@ -28,8 +30,9 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <>
       {!isDashboardOrChat && mounted && (
-        <Header isDark={isDark} setIsDark={setIsDark} showDashboardBtn />
+        <Header isDark={isDark} setIsDark={setIsDark} showDashboardBtn={!!user} />
       )}
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       {children}
     </>
   );

@@ -113,11 +113,23 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     };
 
     const handleGoogle = () => {
-        window.location.href = 'http://localhost:5000/api/auth/google';
+        // Get base URL without /api suffix
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        // Remove /api if it exists at the end
+        const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+        const oauthUrl = `${baseUrl}/api/auth/google`;
+        console.log('🔵 Google OAuth URL:', oauthUrl);
+        window.location.href = oauthUrl;
     };
 
     const handleGitHub = () => {
-        window.location.href = 'http://localhost:5000/api/auth/github';
+        // Get base URL without /api suffix
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        // Remove /api if it exists at the end
+        const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+        const oauthUrl = `${baseUrl}/api/auth/github`;
+        console.log('🟣 GitHub OAuth URL:', oauthUrl);
+        window.location.href = oauthUrl;
     };
 
     return (

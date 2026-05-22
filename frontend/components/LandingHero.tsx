@@ -186,11 +186,7 @@ export default function LandingHero({ onGetStarted }: LandingHeroProps) {
                                 <div key={i} className={`w-6 h-6 rounded-full border-2 border-white dark:border-gray-950 ${c}`} />
                             ))}
                         </div>
-<<<<<<< HEAD
-                        <span>Enthusiastic learners</span>
-=======
-                        <span>Trusted by learners worldwide</span>
->>>>>>> origin/saurabh
+                        <span>Trusted by enthusiastic learners worldwide</span>
                     </div>
                     <span className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
                     <div className="flex items-center gap-1">
