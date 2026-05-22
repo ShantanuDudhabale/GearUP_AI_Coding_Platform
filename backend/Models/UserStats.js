@@ -65,13 +65,7 @@ const userStatsSchema = new mongoose.Schema({
     },
     skills: {
         type: [skillSchema],
-        default: [
-            { skill: 'HTML', level: 0, exercises: 0 },
-            { skill: 'CSS', level: 0, exercises: 0 },
-            { skill: 'JavaScript', level: 0, exercises: 0 },
-            { skill: 'Python', level: 0, exercises: 0 },
-            { skill: 'Arduino', level: 0, exercises: 0 }
-        ]
+        default: []
     },
     exercisesSolved: {
         type: Number,

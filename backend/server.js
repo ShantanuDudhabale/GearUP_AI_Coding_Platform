@@ -9,6 +9,7 @@ import progressRoutes from './Routes/progressRoutes.js';
 import sessionRoutes from './Routes/sessionRoutes.js';
 import chatRoutes from './Routes/chatRoutes.js';
 import statsRoutes from './Routes/statsRoutes.js';
+import practiceRoutes from './Routes/practiceRoutes.js';
 import connectDB from './Config/database.js';
 import { rateLimit } from './Middlewares/rateLimit.js';
 
@@ -52,6 +53,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/practice', practiceRoutes);
 
 // 404 Handler
 app.use((req, res) => {
